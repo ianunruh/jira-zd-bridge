@@ -1,0 +1,9 @@
+# OS artifacts
+.DS_Store
+
+# Python artifacts
+*.pyc
+/env
+
+# Configuration
+config.yaml

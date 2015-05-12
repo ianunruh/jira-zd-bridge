@@ -1,0 +1,42 @@
+# Redis connection
+redis_host: localhost
+redis_port: 6379
+
+# Zendesk authentication
+zendesk_url: https://example.zendesk.com
+zendesk_username: zendesk-bot@example.com
+zendesk_password: supers3cret
+
+# JIRA authentication
+jira_url: https://jira.example.com
+jira_username: jira-bot
+jira_password: supers3cret
+
+# Query used to limit which issues are bridged
+jira_issue_jql: project = PROJ
+
+# Issue field used to hold reference to Zendesk ticket ID
+jira_reference_field: customfield_13000
+
+# Format used for the subject when creating tickets in Zendesk
+zendesk_subject_format: "[JIRA] [{key}] {summary}"
+
+# Format used when creating tickets in Zendesk
+zendesk_initial_comment_format: |
+  Issue created by {creator} on {created}
+
+  {description}
+
+# Format used when creating comments in Zendesk
+zendesk_comment_format: |
+  Issue updated by {author} on {created}
+
+  {body}
+
+# Format used when creating comments in JIRA
+jira_comment_format: |
+  *{author}, {created}*
+
+  {body}
+
+zendesk_signature_delimeter: ---
