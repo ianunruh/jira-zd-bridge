@@ -141,7 +141,7 @@ class Bridge(object):
                                                          created=comment.created,
                                                          body=comment.body)
 
-            self.zd_client.update_ticket(ticket.id, comment=dict(body=comment_body))
+            self.zd_client.update_ticket(ticket.id, comment=dict(body=comment_body), status='open')
             self.redis.sadd('seen_jira_comments', comment.id)
 
             LOG.info('Copied JIRA comment %s to Zendesk ticket', comment.id)
