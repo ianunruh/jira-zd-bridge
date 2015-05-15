@@ -7,6 +7,7 @@ import sys
 
 from jira import JIRA
 from redis import StrictRedis
+import six
 import yaml
 import zendesk
 
@@ -18,7 +19,8 @@ def force_yaml_unicode():
 
     yaml.add_constructor(u'tag:yaml.org,2002:str', unicode_str_constructor)
 
-force_yaml_unicode()
+if sys.version_info < (3, 0):
+    force_yaml_unicode()
 
 class PropertyHolder(object):
     pass
@@ -26,7 +28,7 @@ class PropertyHolder(object):
 def objectize(dct):
     obj = PropertyHolder()
 
-    for k, v in dct.iteritems():
+    for k, v in six.iteritems(dct):
         setattr(obj, k, v)
 
     return obj

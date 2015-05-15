@@ -2,5 +2,6 @@ jira
 requests
 pyyaml
 redis
+six
 
 git+https://github.com/ianunruh/pyzendesk.git
