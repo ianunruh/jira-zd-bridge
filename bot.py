@@ -7,8 +7,8 @@ import sys
 
 from jira import JIRA
 from redis import StrictRedis
-import requests
 import yaml
+import zendesk
 
 LOG = logging.getLogger(__name__)
 
@@ -20,142 +20,16 @@ def force_yaml_unicode():
 
 force_yaml_unicode()
 
-class MultipleResults(Exception):
-    pass
-
-def raise_for_status(func):
-    def decorator(*args, **kwargs):
-        response = func(*args, **kwargs)
-
-        try:
-            response.raise_for_status()
-        except:
-            print response.text
-            raise
-
-        return response
-
-    return decorator
-
 class PropertyHolder(object):
     pass
 
-def objectize(raw):
-    if isinstance(raw, list):
-        return [objectize(x) for x in raw]
-    elif isinstance(raw, dict):
-        obj = PropertyHolder()
-        for k, v in raw.items():
-            setattr(obj, k, objectize(v))
-        return obj
+def objectize(dct):
+    obj = PropertyHolder()
 
-    return raw
+    for k, v in dct.iteritems():
+        setattr(obj, k, v)
 
-def map_json(func):
-    def decorator(*args, **kwargs):
-        return objectize(func(*args, **kwargs))
-
-    return decorator
-
-class ZendeskClient(object):
-    def __init__(self, url, username, password):
-        self.url = url
-        self.username = username
-        self.password = password
-
-    @property
-    @map_json
-    def me(self):
-        return self.get('/api/v2/users/me.json').json()['user']
-
-    @map_json
-    def search(self, query, sort_by=None, sort_order=None):
-        params = {
-            'query': query
-        }
-
-        if sort_by:
-            params['sort_by'] = sort_by
-
-        if sort_order:
-            params['sort_order'] = sort_order
-
-        params['page'] = 1
-
-        results = []
-        while True:
-            body = self.get('/api/v2/search.json', params=params).json()
-
-            results.extend(body['results'])
-
-            if not body['next_page']:
-                return results
-
-            params['page'] += 1
-
-    @map_json
-    def find(self, query):
-        results = self.search(query)
-
-        if len(results) > 1:
-            raise MultipleResults()
-        elif len(results) == 1:
-            return results[0]
-
-    @map_json
-    def ticket(self, id):
-        return self.get('/api/v2/tickets/{}.json'.format(id)).json()['ticket']
-
-    @map_json
-    def create_ticket(self, subject, comment_body, external_id=None):
-        params = {
-            'ticket': {
-                'subject': subject,
-                'comment': {
-                    'body': comment_body,
-                },
-                'external_id': external_id,
-            }
-        }
-
-        return self.post('/api/v2/tickets.json', json=params).json()['ticket']
-
-    @map_json
-    def update_ticket(self, id, **kwargs):
-        params = {
-            'ticket': kwargs,
-        }
-
-        return self.put('/api/v2/tickets/{}.json'.format(id), json=params).json()['ticket']
-
-    @map_json
-    def ticket_comments(self, id):
-        return self.get('/api/v2/tickets/{}/comments.json'.format(id)).json()['comments']
-
-    @map_json
-    def create_ticket_comment(self, id, body, public=False, status='open'):
-        params = {
-            'body': body,
-            'public': public,
-        }
-
-        return self.update_ticket(id, comment=params, status=status)
-
-    @map_json
-    def user(self, id):
-        return self.get('/api/v2/users/{}.json'.format(id)).json()['user']
-
-    @raise_for_status
-    def get(self, url, **kwargs):
-        return requests.get(self.url + url, auth=(self.username, self.password), **kwargs)
-
-    @raise_for_status
-    def post(self, url, **kwargs):
-        return requests.post(self.url + url, auth=(self.username, self.password), **kwargs)
-
-    @raise_for_status
-    def put(self, url, **kwargs):
-        return requests.put(self.url + url, auth=(self.username, self.password), **kwargs)
+    return obj
 
 class Bridge(object):
     def __init__(self, jira_client, zd_client, redis, config):
@@ -172,7 +46,7 @@ class Bridge(object):
         self.jira_comment_format = config.jira_comment_format
         self.zd_signature_delimeter = config.zendesk_signature_delimeter
 
-        self.zd_identity = self.zd_client.me
+        self.zd_identity = self.zd_client.current_user
         self.jira_identity = self.jira_client.current_user()
 
     def sync(self):
@@ -209,7 +83,7 @@ class Bridge(object):
 
             LOG.debug('Creating Zendesk ticket')
             ticket = self.zd_client.create_ticket(subject=subject,
-                                                  comment_body=comment_body,
+                                                  comment=dict(body=comment_body),
                                                   external_id=issue.key)
 
             LOG.info('Created Zendesk ticket %s', ticket.id)
@@ -240,9 +114,7 @@ class Bridge(object):
 
             LOG.debug('Copying Zendesk comment %s to JIRA issue', comment.id)
 
-            author = self.zd_client.user(comment.author_id)
-
-            comment_body = self.jira_comment_format.format(author=author.name,
+            comment_body = self.jira_comment_format.format(author=comment.author.name,
                                                            created=comment.created_at, 
                                                            body=self._cut_signature(comment.body))
 
@@ -267,7 +139,7 @@ class Bridge(object):
                                                          created=comment.created,
                                                          body=comment.body)
 
-            self.zd_client.create_ticket_comment(ticket.id, comment_body, public=True)
+            self.zd_client.update_ticket(ticket.id, comment=dict(body=comment_body))
             self.redis.sadd('seen_jira_comments', comment.id)
 
             LOG.info('Copied JIRA comment %s to Zendesk ticket', comment.id)
@@ -299,9 +171,9 @@ def main():
     jira_client = JIRA(server=config.jira_url,
                        basic_auth=(config.jira_username, config.jira_password))
 
-    zd_client = ZendeskClient(url=config.zendesk_url,
-                              username=config.zendesk_username,
-                              password=config.zendesk_password)
+    zd_client = zendesk.Client(url=config.zendesk_url,
+                               username=config.zendesk_username,
+                               password=config.zendesk_password)
 
     bridge = Bridge(jira_client=jira_client,
                     zd_client=zd_client,
