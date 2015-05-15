@@ -40,20 +40,20 @@ def raise_for_status(func):
 class PropertyHolder(object):
     pass
 
-def json2obj(raw):
+def objectize(raw):
     if isinstance(raw, list):
-        return [json2obj(x) for x in raw]
+        return [objectize(x) for x in raw]
     elif isinstance(raw, dict):
         obj = PropertyHolder()
         for k, v in raw.items():
-            setattr(obj, k, v)
+            setattr(obj, k, objectize(v))
         return obj
 
     return raw
 
 def map_json(func):
     def decorator(*args, **kwargs):
-        return json2obj(func(*args, **kwargs))
+        return objectize(func(*args, **kwargs))
 
     return decorator
 
@@ -163,14 +163,14 @@ class Bridge(object):
         self.zd_client = zd_client
         self.redis = redis
 
-        self.jira_issue_jql = config['jira_issue_jql']
-        self.jira_reference_field = config['jira_reference_field']
+        self.jira_issue_jql = config.jira_issue_jql
+        self.jira_reference_field = config.jira_reference_field
 
-        self.zd_subject_format = config['zendesk_subject_format']
-        self.zd_initial_comment_format = config['zendesk_initial_comment_format']
-        self.zd_comment_format = config['zendesk_comment_format']
-        self.jira_comment_format = config['jira_comment_format']
-        self.zd_signature_delimeter = config['zendesk_signature_delimeter']
+        self.zd_subject_format = config.zendesk_subject_format
+        self.zd_initial_comment_format = config.zendesk_initial_comment_format
+        self.zd_comment_format = config.zendesk_comment_format
+        self.jira_comment_format = config.jira_comment_format
+        self.zd_signature_delimeter = config.zendesk_signature_delimeter
 
         self.zd_identity = self.zd_client.me
         self.jira_identity = self.jira_client.current_user()
@@ -292,16 +292,16 @@ def main():
     configure_logger()
 
     with open(args.config_file) as fp:
-        config = yaml.load(fp)
+        config = objectize(yaml.load(fp))
 
-    redis = StrictRedis(host=config['redis_host'], port=config['redis_port'])
+    redis = StrictRedis(host=config.redis_host, port=config.redis_port)
 
-    jira_client = JIRA(server=config['jira_url'],
-                       basic_auth=(config['jira_username'], config['jira_password']))
+    jira_client = JIRA(server=config.jira_url,
+                       basic_auth=(config.jira_username, config.jira_password))
 
-    zd_client = ZendeskClient(url=config['zendesk_url'],
-                              username=config['zendesk_username'],
-                              password=config['zendesk_password'])
+    zd_client = ZendeskClient(url=config.zendesk_url,
+                              username=config.zendesk_username,
+                              password=config.zendesk_password)
 
     bridge = Bridge(jira_client=jira_client,
                     zd_client=zd_client,
