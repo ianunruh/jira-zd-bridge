@@ -7,3 +7,6 @@
 
 # Configuration
 config.yaml
+
+# JIRA SDK standalone
+/amps-standalone
