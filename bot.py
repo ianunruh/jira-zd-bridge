@@ -64,8 +64,7 @@ class Bridge(object):
         ticket = self.zd_client.find('type:ticket external_id:{}'.format(issue.key))
 
         if ticket:
-            # NOTE(ianunruh) The PropertyHolder object does not expose `get` or `__getitem__`
-            jira_tid_reference = issue.fields.__dict__[self.jira_reference_field]
+            jira_tid_reference = getattr(issue.fields, self.jira_reference_field)
 
             LOG.debug('Found existing Zendesk ticket %s', ticket.id)
 
