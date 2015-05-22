@@ -39,6 +39,7 @@ class Bridge(object):
         self.zd_client = zd_client
         self.redis = redis
 
+        self.jira_url = config.jira_url
         self.jira_issue_jql = config.jira_issue_jql
         self.jira_reference_field = config.jira_reference_field
 
@@ -138,7 +139,8 @@ class Bridge(object):
 
             comment_body = self.zd_comment_format.format(author=comment.author.displayName,
                                                          created=comment.created,
-                                                         body=comment.body)
+                                                         body=comment.body,
+                                                         jira_url=self.jira_url)
 
             self.zd_client.update_ticket(ticket.id, comment=dict(body=comment_body), status='open')
             self.redis.sadd('seen_jira_comments', comment.id)
