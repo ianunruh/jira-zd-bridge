@@ -27,6 +27,10 @@ zendesk_initial_comment_format: |
 
   {description}
 
+  ---
+
+  {jira_url}/browse/{key}
+
 # Format used when creating comments in Zendesk
 zendesk_comment_format: |
   Issue updated by {author} on {created}
@@ -40,3 +44,15 @@ jira_comment_format: |
   {body}
 
 zendesk_signature_delimeter: ---
+
+# Username of the contact that issues will be escalated to on the JIRA side
+jira_escalation_contact: John_Doe
+
+# ID of the group that Zendesk staff use to escalate tickets
+zendesk_escalation_group: 123456789
+
+# ID of the group that the bot uses to de-escalate tickets
+zendesk_support_group: 123456789
+
+# Name of the status used in JIRA to indicate an issue is solved
+jira_solved_status: Done

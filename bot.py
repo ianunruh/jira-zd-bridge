@@ -49,11 +49,18 @@ class Bridge(object):
         self.jira_comment_format = config.jira_comment_format
         self.zd_signature_delimeter = config.zendesk_signature_delimeter
 
+        self.jira_escalation_contact = config.jira_escalation_contact
+
+        self.zd_escalation_group = config.zendesk_escalation_group
+        self.zd_support_group = config.zendesk_support_group
+
+        self.jira_solved_status = config.jira_solved_status
+
         self.zd_identity = self.zd_client.current_user
         self.jira_identity = self.jira_client.current_user()
 
     def sync(self):
-        for issue in self.jira_client.search_issues(self.jira_issue_jql, fields='comment,*navigable', expand='changelog'):
+        for issue in self.jira_client.search_issues(self.jira_issue_jql, fields='assignee,comment,*navigable'):
             try:
                 self._sync_issue(issue)
             except:
@@ -63,7 +70,7 @@ class Bridge(object):
         update_jira_ref = True
 
         ticket = self.zd_client.find('type:ticket external_id:{}'.format(issue.key))
-
+        
         if ticket:
             jira_tid_reference = getattr(issue.fields, self.jira_reference_field)
 
@@ -74,6 +81,9 @@ class Bridge(object):
                     update_jira_ref = False
                 else:
                     raise ValueError('JIRA reference field non-empty and does not match Zendesk ticket ID')
+        elif issue.fields.status.name == self.jira_solved_status:
+            LOG.debug('Skipping previously untracked, solved JIRA issue', issue.key)
+            return
         else:
             subject = self.zd_subject_format.format(key=issue.key,
                                                     summary=issue.fields.summary)
@@ -81,27 +91,68 @@ class Bridge(object):
             comment_body = self.zd_initial_comment_format.format(creator=issue.fields.creator.displayName,
                                                                  description=issue.fields.description,
                                                                  created=issue.fields.created,
-                                                                 key=issue.key)
+                                                                 key=issue.key,
+                                                                 jira_url=self.jira_url)
 
-            LOG.debug('Creating Zendesk ticket')
+            LOG.info('Creating Zendesk ticket for JIRA issue %s', issue.key)
             ticket = self.zd_client.create_ticket(subject=subject,
                                                   comment=dict(body=comment_body),
                                                   external_id=issue.key)
 
-            LOG.info('Created Zendesk ticket %s', ticket.id)
-
         if update_jira_ref:
             self._update_jira_ref(issue, ticket)
 
-        self._sync_zendesk_comments(issue, ticket)
-        self._sync_jira_comments(issue, ticket)
+        self._sync_comments_to_jira(issue, ticket)
+        self._sync_comments_to_zd(issue, ticket)
+
+        self._sync_meta(issue, ticket)
+
+    def _sync_meta(self, issue, ticket):
+        LOG.debug('JIRA issue %s has status %s; Zendesk has %s', issue.key, 
+                  issue.fields.status.name, ticket.status)
+
+        if issue.fields.status.name == self.jira_solved_status:
+            LOG.debug('JIRA issue %s is marked solved', issue.key)
+            if ticket.status != 'solved':
+                LOG.info('Marking Zendesk ticket %s solved', ticket.id)
+                ticket.update(status='solved')
+        elif ticket.group_id == self.zd_escalation_group:
+            LOG.debug('Zendesk ticket %s assigned to myself', ticket.id)
+            if self.redis.sismember('escalated_zd_tickets', ticket.id):
+                if issue.fields.assignee.name == self.jira_identity:
+                    # In the past, the issue was escalated but staff on the JIRA side
+                    # have assigned the issue to the bot for de-escalation to Zendesk staff
+                    LOG.info('Opening Zendesk ticket %s for de-escalation', issue.key)
+
+                    ticket.update(assignee_id=None, group_id=self.zd_support_group, status='open')
+                    self.redis.srem('escalated_zd_tickets', ticket.id)
+                else:
+                    LOG.debug('JIRA issue %s has not been de-escalated', issue.key)
+            else:
+                # Zendesk staff assigned the ticket to the escalation group, but it has not been
+                # assigned on the JIRA side to the escalation contact
+                LOG.info('Assigning JIRA issue %s to escalation contact', issue.key)
+
+                self.jira_client.assign_issue(issue, self.jira_escalation_contact)
+                self.redis.sadd('escalated_zd_tickets', ticket.id)
+        elif ticket.status != 'open':
+            # Retrieve the most recent audit
+            last_audit = None
+            for audit in ticket.audits:
+                last_audit = audit
+
+            if last_audit.author_id == self.zd_identity.id:
+                # Ticket is not currently escalated and the last update was made by
+                # the bot, so open up the ticket on the Zendesk side
+                LOG.info('Opening Zendesk ticket %s', ticket.id)
+                ticket.update(status='open')
 
     def _update_jira_ref(self, issue, ticket):
-            LOG.debug('Updating JIRA reference field')
-            issue.update(fields={self.jira_reference_field: str(ticket.id)})
+        LOG.info('Updating JIRA reference field')
+        issue.update(fields={self.jira_reference_field: str(ticket.id)})
 
-    def _sync_zendesk_comments(self, issue, ticket):
-        for comment in self.zd_client.ticket_comments(ticket.id):
+    def _sync_comments_to_jira(self, issue, ticket):
+        for comment in ticket.comments:
             if not comment.public:
                 LOG.debug('Skipping private Zendesk comment %s', comment.id)
                 continue
@@ -114,7 +165,7 @@ class Bridge(object):
                 LOG.debug('Skipping seen Zendesk comment %s', comment.id)
                 continue
 
-            LOG.debug('Copying Zendesk comment %s to JIRA issue', comment.id)
+            LOG.info('Copying Zendesk comment %s to JIRA issue', comment.id)
 
             comment_body = self.jira_comment_format.format(author=comment.author.name,
                                                            created=comment.created_at, 
@@ -123,9 +174,7 @@ class Bridge(object):
             self.jira_client.add_comment(issue, comment_body)
             self.redis.sadd('seen_zd_comments', comment.id)
 
-            LOG.info('Copied Zendesk comment %s to JIRA ticket', comment.id)
-
-    def _sync_jira_comments(self, issue, ticket):
+    def _sync_comments_to_zd(self, issue, ticket):
         for comment in issue.fields.comment.comments:
             if comment.author.name == self.jira_identity:
                 LOG.debug('Skipping my own JIRA comment %s', comment.id)
@@ -135,17 +184,14 @@ class Bridge(object):
                 LOG.debug('Skipping seen JIRA comment %s', comment.id)
                 continue
 
-            LOG.debug('Copying JIRA comment %s to Zendesk ticket', comment.id)
+            LOG.info('Copying JIRA comment %s to Zendesk ticket', comment.id)
 
             comment_body = self.zd_comment_format.format(author=comment.author.displayName,
                                                          created=comment.created,
-                                                         body=comment.body,
-                                                         jira_url=self.jira_url)
+                                                         body=comment.body)
 
-            self.zd_client.update_ticket(ticket.id, comment=dict(body=comment_body), status='open')
+            ticket.update(comment=dict(body=comment_body))
             self.redis.sadd('seen_jira_comments', comment.id)
-
-            LOG.info('Copied JIRA comment %s to Zendesk ticket', comment.id)
 
     def _cut_signature(self, body):
         return body.rsplit(self.zd_signature_delimeter, 1)[0]
