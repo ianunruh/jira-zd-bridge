@@ -51,13 +51,22 @@ class Bridge(object):
 
         self.jira_escalation_contact = config.jira_escalation_contact
 
-        self.zd_escalation_group = config.zendesk_escalation_group
-        self.zd_support_group = config.zendesk_support_group
+        self.assignable_groups = list(self.zd_client.assignable_groups)
+
+        self.zd_escalation_group = self._find_group(config.zendesk_escalation_group)
+        self.zd_support_group = self._find_group(config.zendesk_support_group)
 
         self.jira_solved_statuses = config.jira_solved_statuses
 
         self.zd_identity = self.zd_client.current_user
         self.jira_identity = self.jira_client.current_user()
+
+    def _find_group(self, name):
+        for group in self.assignable_groups:
+            if group.name == name:
+                return group
+
+        raise ValueError('Could not find group {}'.format(name))
 
     def sync(self):
         for issue in self.jira_client.search_issues(self.jira_issue_jql, fields='assignee,comment,*navigable'):

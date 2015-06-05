@@ -48,11 +48,11 @@ zendesk_signature_delimeter: ---
 # Username of the contact that issues will be escalated to on the JIRA side
 jira_escalation_contact: John_Doe
 
-# ID of the group that Zendesk staff use to escalate tickets
-zendesk_escalation_group: 123456789
+# Name of the group that Zendesk staff use to escalate tickets
+zendesk_escalation_group: JIRA L2
 
-# ID of the group that the bot uses to de-escalate tickets
-zendesk_support_group: 123456789
+# Name of the group that the bot uses to de-escalate tickets
+zendesk_support_group: Support
 
 # Names of the statuses used in JIRA to indicate an issue is solved
 jira_solved_statuses:
