@@ -57,6 +57,7 @@ class Bridge(object):
         self.zd_support_group = self._find_group(config.zendesk_support_group)
 
         self.jira_solved_statuses = config.jira_solved_statuses
+        self.jira_priority_map = config.jira_priority_map
 
         self.zd_identity = self.zd_client.current_user
         self.jira_identity = self.jira_client.current_user()
@@ -114,6 +115,8 @@ class Bridge(object):
         self._sync_comments_to_jira(issue, ticket)
         self._sync_comments_to_zd(issue, ticket)
 
+        self._sync_priority(issue, ticket)
+
         self._sync_meta(issue, ticket)
 
     def _sync_meta(self, issue, ticket):
@@ -155,6 +158,14 @@ class Bridge(object):
                 # the bot, so open up the ticket on the Zendesk side
                 LOG.info('Opening Zendesk ticket %s', ticket.id)
                 ticket.update(status='open')
+
+    def _sync_priority(self, issue, ticket):
+        priority = self.jira_priority_map[issue.fields.priority.name]
+        LOG.debug('JIRA priority %s mapped to Zendesk priority %s', issue.fields.priority.name, priority)
+
+        if ticket.priority != priority:
+            LOG.info('Changing Zendesk priority from %s to %s', ticket.priority, priority)
+            ticket.update(priority=priority)
 
     def _update_jira_ref(self, issue, ticket):
         LOG.info('Updating JIRA reference field')

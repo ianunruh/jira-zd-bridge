@@ -45,6 +45,14 @@ jira_comment_format: |
 
 zendesk_signature_delimeter: ---
 
+# Map of JIRA priority names to corresponding Zendesk priorities
+jira_priority_map:
+  Blocker: urgent
+  Critical: urgent
+  Major: high
+  Minor: normal
+  Trivial: low
+
 # Username of the contact that issues will be escalated to on the JIRA side
 jira_escalation_contact: John_Doe
 
