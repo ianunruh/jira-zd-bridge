@@ -59,6 +59,8 @@ class Bridge(object):
         self.jira_solved_statuses = config.jira_solved_statuses
         self.jira_priority_map = config.jira_priority_map
 
+        self.zd_initial_fields = self._map_ticket_fields(config.zendesk_initial_fields)
+
         self.zd_identity = self.zd_client.current_user
         self.jira_identity = self.jira_client.current_user()
 
@@ -68,6 +70,15 @@ class Bridge(object):
                 return group
 
         raise ValueError('Could not find group {}'.format(name))
+
+    def _map_ticket_fields(self, mappings):
+        result = {}
+
+        for mapping in mappings:
+            # TODO Extend later for additional mapping abilities
+            result[mapping['id']] = mapping['value']
+
+        return result
 
     def sync(self):
         for issue in self.jira_client.search_issues(self.jira_issue_jql, fields='assignee,comment,*navigable'):
@@ -107,7 +118,8 @@ class Bridge(object):
             LOG.info('Creating Zendesk ticket for JIRA issue %s', issue.key)
             ticket = self.zd_client.create_ticket(subject=subject,
                                                   comment=dict(body=comment_body),
-                                                  external_id=issue.key)
+                                                  external_id=issue.key,
+                                                  custom_fields=self.zd_initial_fields)
 
         if update_jira_ref:
             self._update_jira_ref(issue, ticket)
