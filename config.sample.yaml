@@ -54,5 +54,6 @@ zendesk_escalation_group: 123456789
 # ID of the group that the bot uses to de-escalate tickets
 zendesk_support_group: 123456789
 
-# Name of the status used in JIRA to indicate an issue is solved
-jira_solved_status: Done
+# Names of the statuses used in JIRA to indicate an issue is solved
+jira_solved_statuses:
+  - Done

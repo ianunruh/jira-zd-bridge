@@ -54,7 +54,7 @@ class Bridge(object):
         self.zd_escalation_group = config.zendesk_escalation_group
         self.zd_support_group = config.zendesk_support_group
 
-        self.jira_solved_status = config.jira_solved_status
+        self.jira_solved_statuses = config.jira_solved_statuses
 
         self.zd_identity = self.zd_client.current_user
         self.jira_identity = self.jira_client.current_user()
@@ -111,7 +111,7 @@ class Bridge(object):
         LOG.debug('JIRA issue %s has status %s; Zendesk has %s', issue.key, 
                   issue.fields.status.name, ticket.status)
 
-        if issue.fields.status.name == self.jira_solved_status:
+        if issue.fields.status.name in self.jira_solved_statuses:
             LOG.debug('JIRA issue %s is marked solved', issue.key)
             if ticket.status != 'solved':
                 LOG.info('Marking Zendesk ticket %s solved', ticket.id)
