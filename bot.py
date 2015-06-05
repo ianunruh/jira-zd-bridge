@@ -13,6 +13,8 @@ import zendesk
 
 LOG = logging.getLogger(__name__)
 
+ZD_SOLVED_STATUSES = ('solved', 'closed')
+
 def force_yaml_unicode():
     def unicode_str_constructor(loader, node):
         return unicode(loader.construct_scalar(node))
@@ -136,8 +138,7 @@ class Bridge(object):
                   issue.fields.status.name, ticket.status)
 
         if issue.fields.status.name in self.jira_solved_statuses:
-            LOG.debug('JIRA issue %s is marked solved', issue.key)
-            if ticket.status != 'solved':
+            if ticket.status not in ZD_SOLVED_STATUSES:
                 LOG.info('Marking Zendesk ticket %s solved', ticket.id)
                 ticket.update(status='solved')
         elif ticket.group_id == self.zd_escalation_group:
