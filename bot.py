@@ -105,7 +105,7 @@ class Bridge(object):
                 else:
                     raise ValueError('JIRA reference field non-empty and does not match Zendesk ticket ID')
         elif issue.fields.status.name in self.jira_solved_statuses:
-            LOG.debug('Skipping previously untracked, solved JIRA issue', issue.key)
+            LOG.debug('Skipping previously untracked, solved JIRA issue %s', issue.key)
             return
         else:
             subject = self.zd_subject_format.format(key=issue.key,
