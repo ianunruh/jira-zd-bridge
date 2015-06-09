@@ -117,11 +117,18 @@ class Bridge(object):
                                                                  key=issue.key,
                                                                  jira_url=self.jira_url)
 
+            if not issue.fields.assignee or issue.fields.assignee.name == self.jira_identity:
+                group_id = self.zd_support_group.id
+            else:
+                group_id = self.zd_escalation_group.id
+                self.redis.sadd('escalated_zd_tickets', ticket.id)
+
             LOG.info('Creating Zendesk ticket for JIRA issue %s', issue.key)
             ticket = self.zd_client.create_ticket(subject=subject,
                                                   comment=dict(body=comment_body),
                                                   external_id=issue.key,
-                                                  custom_fields=self.zd_initial_fields)
+                                                  custom_fields=self.zd_initial_fields,
+                                                  group_id=group_id)
 
         if update_jira_ref:
             self._update_jira_ref(issue, ticket)
