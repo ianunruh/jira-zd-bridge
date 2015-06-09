@@ -266,6 +266,8 @@ def main():
     with open(args.config_file) as fp:
         config = objectize(yaml.load(fp))
 
+    LOG.debug('Starting bot')
+
     redis = StrictRedis(host=config.redis_host, port=config.redis_port)
 
     jira_client = JIRA(server=config.jira_url,
@@ -280,7 +282,9 @@ def main():
                     redis=redis,
                     config=config)
 
+    LOG.debug('Sync started')
     bridge.sync()
+    LOG.debug('Sync finished')
 
 if __name__ == '__main__':
     main()
