@@ -252,7 +252,7 @@ def configure_logger():
 
 def configure_socks_proxy(config):
     import socks
-    import sockets
+    import socket
 
     socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS4, config.socks_proxy_host, config.socks_proxy_port, True)
     socket.socket = socks.socksocket
