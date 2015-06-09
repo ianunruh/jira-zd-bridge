@@ -126,12 +126,18 @@ class Bridge(object):
         if update_jira_ref:
             self._update_jira_ref(issue, ticket)
 
+        self._take_if_unassigned(issue)
+
         self._sync_comments_to_jira(issue, ticket)
         self._sync_comments_to_zd(issue, ticket)
 
         self._sync_priority(issue, ticket)
 
         self._sync_meta(issue, ticket)
+
+    def _take_if_unassigned(self, issue):
+        if not issue.fields.assignee:
+            self.jira_client.assign_issue(issue, self.jira_identity)
 
     def _sync_meta(self, issue, ticket):
         LOG.debug('JIRA issue %s has status %s; Zendesk has %s', issue.key, 
