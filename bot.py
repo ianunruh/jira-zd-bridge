@@ -166,17 +166,17 @@ class Bridge(object):
 
                 self.jira_client.assign_issue(issue, self.jira_escalation_contact)
                 self.redis.sadd('escalated_zd_tickets', ticket.id)
-        elif ticket.status != 'open':
-            # Retrieve the most recent audit
-            last_audit = None
-            for audit in ticket.audits:
-                last_audit = audit
+        elif ticket.status != 'open' and (not issue.fields.assignee or issue.fields.assignee.name == self.jira_identity):
+                # Retrieve the most recent audit
+                last_audit = None
+                for audit in ticket.audits:
+                    last_audit = audit
 
-            if last_audit.author_id == self.zd_identity.id:
-                # Ticket is not currently escalated and the last update was made by
-                # the bot, so open up the ticket on the Zendesk side
-                LOG.info('Opening Zendesk ticket %s', ticket.id)
-                ticket.update(status='open')
+                if last_audit.author_id == self.zd_identity.id:
+                    # Ticket is not currently escalated and the last update was made by
+                    # the bot, so open up the ticket on the Zendesk side
+                    LOG.info('Opening Zendesk ticket %s', ticket.id)
+                    ticket.update(status='open')
 
     def _sync_priority(self, issue, ticket):
         priority = self.jira_priority_map[issue.fields.priority.name]
