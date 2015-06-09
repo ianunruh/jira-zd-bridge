@@ -250,13 +250,6 @@ def configure_logger():
     LOG.addHandler(handler)
     LOG.setLevel(logging.DEBUG)
 
-def configure_socks_proxy(config):
-    import socks
-    import socket
-
-    socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS4, config.socks_proxy_host, config.socks_proxy_port, True)
-    socket.socket = socks.socksocket
-
 def main():
     parser = ArgumentParser()
     parser.add_argument('-c', '--config-file', default='config.yaml')
@@ -267,9 +260,6 @@ def main():
 
     with open(args.config_file) as fp:
         config = objectize(yaml.load(fp))
-
-    if config.socks_proxy:
-        configure_socks_proxy(config)
 
     redis = StrictRedis(host=config.redis_host, port=config.redis_port)
 

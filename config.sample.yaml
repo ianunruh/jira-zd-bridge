@@ -1,8 +1,3 @@
-# SOCKS proxy
-socks5_proxy: false
-socks5_proxy_host: 127.0.0.1
-socks5_proxy_port: 1080
-
 # Redis connection
 redis_host: localhost
 redis_port: 6379
