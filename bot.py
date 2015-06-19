@@ -162,7 +162,7 @@ class Bridge(object):
             if ticket.status not in ZD_SOLVED_STATUSES:
                 LOG.info('Marking Zendesk ticket %s solved', ticket.id)
                 ticket.update(status='solved')
-        elif ticket.group_id == self.zd_escalation_group:
+        elif ticket.group_id == self.zd_escalation_group.id:
             LOG.debug('Zendesk ticket %s assigned to myself', ticket.id)
             if self.redis.sismember('escalated_zd_tickets', ticket.id):
                 if issue.fields.assignee.name == self.jira_identity:
@@ -170,7 +170,7 @@ class Bridge(object):
                     # have assigned the issue to the bot for de-escalation to Zendesk staff
                     LOG.info('Opening Zendesk ticket %s for de-escalation', issue.key)
 
-                    ticket.update(assignee_id=None, group_id=self.zd_support_group, status='open')
+                    ticket.update(assignee_id=None, group_id=self.zd_support_group.id, status='open')
                     self.redis.srem('escalated_zd_tickets', ticket.id)
                 else:
                     LOG.debug('JIRA issue %s has not been de-escalated', issue.key)
