@@ -1,0 +1,20 @@
+# Python artifacts
+build
+dist
+*.egg-info
+*.pyc
+.tox
+env
+coverage
+.coverage
+
+# OS artifacts
+.DS_Store
+
+# Configuration artifacts
+config.yml
+config-test.yml
+test_cases.yml
+
+# JIRA artifacts
+amps-standalone
