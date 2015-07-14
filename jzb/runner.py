@@ -23,6 +23,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('-c', '--config-file', default='config.yml')
     parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-Q', '--query')
 
     args = parser.parse_args()
 
@@ -47,6 +48,9 @@ def main():
                     zd_client=zd_client,
                     redis=redis,
                     config=config)
+
+    if args.query:
+        bridge.jira_issue_jql = args.query
 
     bridge.sync()
 
