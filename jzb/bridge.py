@@ -127,6 +127,8 @@ class Bridge(object):
             except:
                 LOG.exception('Failed to sync issue: %s', issue.key)
 
+        LOG.debug('Sync finished')
+
     def sync_issue(self, ctx):
         """
         Syncs a given issue with one or more tickets in Zendesk
