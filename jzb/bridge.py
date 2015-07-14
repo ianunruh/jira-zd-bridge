@@ -121,6 +121,9 @@ class Bridge(object):
             try:
                 LOG.debug('Syncing JIRA issue: %s', issue.key)
                 self.sync_issue(SyncContext(issue))
+            except KeyboardInterrupt:
+                LOG.error('Exiting due to CTRL+C')
+                return
             except:
                 LOG.exception('Failed to sync issue: %s', issue.key)
 
