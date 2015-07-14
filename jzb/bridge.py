@@ -543,6 +543,38 @@ class Bridge(object):
 
         self.jira_client.transition_issue(ctx.issue, transition_id, fields=params)
         self.refresh_issue(ctx)
+
+    def handle_add_ticket_tags(self, ctx, tags, **kwargs):
+        """
+        Handler for the `add_ticket_tags` action type
+
+        :param ctx: `SyncContext` object
+        :param tags: list of tag names to add
+        """
+        absent_tags = []
+        for tag in tags:
+            if tag not in ctx.ticket.tags:
+                absent_tags.append(tag)
+
+        if absent_tags:
+            ctx.ticket.add_tags(*absent_tags)
+            self.refresh_ticket(ctx)
+
+    def handle_remove_ticket_tags(self, ctx, tags, **kwargs):
+        """
+        Handler for the `remove_ticket_tags` action type
+
+        :param ctx: `SyncContext` object
+        :param tags: list of tag names to remove
+        """
+        present_tags = []
+        for tag in tags:
+            if tag in ctx.ticket.tags:
+                present_tags.append(tag)
+
+        if present_tags:
+            ctx.ticket.remove_tags(*present_tags)
+            self.refresh_ticket(ctx)
     
 class SyncContext(object):
     """
