@@ -53,6 +53,8 @@ class Bridge(object):
 
         self.escalation_strategy_defs = self.parse_escalation_strategy_defs(config.escalation_strategies)
 
+        self.ticket_form = self.find_ticket_form_by_name(config.zd_ticket_form)
+
     def parse_escalation_strategy_defs(self, strategy_defs):
         """
         Parses a list of escalation strategy definitions
@@ -216,7 +218,8 @@ class Bridge(object):
                                             comment=dict(body=comment),
                                             external_id=issue.key,
                                             custom_fields=self.zd_initial_fields,
-                                            group_id=self.zd_support_group.id)
+                                            group_id=self.zd_support_group.id,
+                                            ticket_form_id=self.ticket_form.id)
 
     def create_followup_ticket(self, issue, previous_ticket):
         """
@@ -236,6 +239,7 @@ class Bridge(object):
                                             external_id=issue.key,
                                             custom_fields=self.zd_initial_fields,
                                             group_id=self.zd_support_group.id,
+                                            ticket_form_id=self.ticket_form.id,
                                             via_followup_source_id=previous_ticket.id)
 
     def sync_assignee(self, ctx):
@@ -479,6 +483,19 @@ class Bridge(object):
                 return group
 
         raise ValueError('Could not find group by id: {}'.format(id))
+
+    def find_ticket_form_by_name(self, name):
+        """
+        Find ticket form by its name
+
+        :param name: Name of the ticket form to find
+        :return: `zendesk.resources.TicketForm` object
+        """
+        for form in self.zd_client.ticket_forms:
+            if form.name == name:
+                return form
+
+        raise ValueError('Could not find ticket form by name: {}'.format(name))
 
     def refresh_ticket(self, ctx):
         """
