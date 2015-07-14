@@ -251,6 +251,9 @@ class Bridge(object):
         last_seen_jira_assignee = self.redis.get('last_seen_jira_assignee:{}'.format(ctx.issue.key))
         last_seen_zd_group = self.redis.get('last_seen_zd_group:{}'.format(ctx.ticket.id))
 
+        if ctx.issue.fields.assignee:
+            LOG.debug('JIRA issue assigned: %s', ctx.issue.fields.assignee.name)
+
         if not ctx.issue.fields.assignee:
             LOG.info('Assigning previously unassigned JIRA issue to bot')
             self.jira_client.assign_issue(ctx.issue, self.jira_identity)
