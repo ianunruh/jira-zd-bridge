@@ -475,7 +475,7 @@ class Bridge(object):
         """
         Find group object by its id
 
-        :param name: Integer id
+        :param id: Integer id
         :return: `zendesk.resources.Group` object
         """
         for group in self.assignable_groups:
