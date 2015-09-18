@@ -270,7 +270,10 @@ class Bridge(object):
                 ctx.ticket = ctx.ticket.update(group_id=self.zd_support_group.id)
         elif str(ctx.ticket.group_id) != last_seen_zd_group:
             if ctx.ticket.group_id != self.zd_support_group.id:
-                self.handle_escalation(ctx)
+                if ctx.issue.fields.assignee.name == self.jira_identity:
+                    self.handle_escalation(ctx)
+                else:
+                    LOG.warn('Skipping escalation as assignee is already set on JIRA side')
         else:
             return
 
