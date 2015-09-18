@@ -116,7 +116,7 @@ class Bridge(object):
         Attempts to sync issues matching the configures JQL query
         """
         LOG.debug('Querying JIRA: %s', self.jira_issue_jql)
-        for issue in self.jira_client.search_issues(self.jira_issue_jql, 
+        for issue in self.jira_client.search_issues(self.jira_issue_jql,
                                                     fields='assignee,attachment,comment,*navigable'):
             try:
                 LOG.debug('Syncing JIRA issue: %s', issue.key)
@@ -147,8 +147,8 @@ class Bridge(object):
 
     def ensure_ticket_if_eligible(self, ctx):
         """
-        Retrieves or creates a ticket in Zendesk if the given JIRA issue is eligible for bridging. 
-        If the issue is previously untracked and meets any of the following conditions, it will 
+        Retrieves or creates a ticket in Zendesk if the given JIRA issue is eligible for bridging.
+        If the issue is previously untracked and meets any of the following conditions, it will
         not be eligible for bridging:
 
         * The status is present in the jira_solved_statuses list
@@ -264,7 +264,7 @@ class Bridge(object):
             self.jira_client.assign_issue(ctx.issue, self.jira_identity)
             self.refresh_issue(ctx)
         elif ctx.issue.fields.assignee.name != last_seen_jira_assignee:
-            if (ctx.issue.fields.assignee.name == self.jira_identity and 
+            if (ctx.issue.fields.assignee.name == self.jira_identity and
                     ctx.ticket.group_id != self.zd_support_group.id):
                 LOG.info('Assigning Zendesk ticket to group: %s', self.zd_support_group.name)
                 ctx.ticket = ctx.ticket.update(group_id=self.zd_support_group.id)
@@ -273,7 +273,7 @@ class Bridge(object):
                 self.handle_escalation(ctx)
         else:
             return
-        
+
         self.redis.set('last_seen_jira_assignee:{}'.format(ctx.issue.key), ctx.issue.fields.assignee.name)
         self.redis.set('last_seen_zd_group:{}'.format(ctx.ticket.id), ctx.ticket.group_id)
 
@@ -300,7 +300,7 @@ class Bridge(object):
                     strategy_def.strategy.post_escalation()
                 except:
                     LOG.exception('Failed to call post-escalation hook on strategy')
-                
+
                 match = True
                 break
 
@@ -373,7 +373,7 @@ class Bridge(object):
                         return
 
                 break
-            
+
             if not match:
                 LOG.debug('No action defs matched')
                 break
@@ -402,7 +402,7 @@ class Bridge(object):
         zd_priority = self.jira_priority_map.get(jira_priority, self.jira_fallback_priority)
 
         LOG.debug('JIRA priority: %s; mapped Zendesk priority: %s', jira_priority, zd_priority)
-        
+
         if ctx.ticket.priority != zd_priority:
             LOG.info('Updating Zendesk ticket priority')
             ctx.ticket.update(priority=zd_priority)
@@ -438,7 +438,7 @@ class Bridge(object):
 
             self.jira_client.add_comment(ctx.issue, comment_body)
             self.redis.sadd('seen_zd_comments', comment.id)
-            
+
             changed = True
 
         if changed:
@@ -583,7 +583,7 @@ class Bridge(object):
         if present_tags:
             ctx.ticket.remove_tags(*present_tags)
             self.refresh_ticket(ctx)
-    
+
 class SyncContext(object):
     """
     Container for an issue/ticket pair
@@ -656,7 +656,7 @@ class TicketFieldMapper(object):
             return mapping['value']
         else:
             raise ValueError('Could not map ticket field value from: {}'.format(mapping))
-        
+
     def find_active_ticket_field(self, name):
         """
         :param name: Name of field to find
